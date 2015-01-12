@@ -1,0 +1,125 @@
+
+# Copyright (c) 2015 by Radovan Bast and Jonas Juselius
+# see https://github.com/cmake-en-papillote/cmake-en-papillote/blob/master/LICENSE
+
+#-------------------------------------------------------------------------------
+
+import sys
+import subprocess
+
+#-------------------------------------------------------------------------------
+
+def raw_list():
+
+    s = []
+
+    s.append(['System name', r'@CMAKE_SYSTEM_NAME@'])
+    s.append(['System', r'@CMAKE_SYSTEM@'])
+    s.append(['CMake version', r'@CMAKE_VERSION@'])
+    s.append(['CMake generator', r'@CMAKE_GENERATOR@'])
+    s.append(['Processor', r'@CMAKE_SYSTEM_PROCESSOR@'])
+    s.append(['Build type', r'@CMAKE_BUILD_TYPE@'])
+
+    s.append(['Fortran compiler', r'@CMAKE_Fortran_COMPILER@'])
+    s.append(['Fortran compiler ID', r'@CMAKE_Fortran_COMPILER_ID@'])
+    if '@CMAKE_BUILD_TYPE@'.lower() == 'debug':
+        s.append(['Fortran flags', r'@CMAKE_Fortran_FLAGS@ @CMAKE_Fortran_FLAGS_DEBUG@'])
+    elif '@CMAKE_BUILD_TYPE@'.lower() == 'release':
+        s.append(['Fortran flags', r'@CMAKE_Fortran_FLAGS@ @CMAKE_Fortran_FLAGS_RELEASE@'])
+
+    s.append(['C compiler', r'@CMAKE_C_COMPILER@'])
+    s.append(['C compiler version', r'@CMAKE_C_COMPILER_ID@ @CMAKE_C_COMPILER_VERSION@'])
+    if '@CMAKE_BUILD_TYPE@'.lower() == 'debug':
+        s.append(['C flags', r'@CMAKE_C_FLAGS@ @CMAKE_C_FLAGS_DEBUG@'])
+    elif '@CMAKE_BUILD_TYPE@'.lower() == 'release':
+        s.append(['C flags', r'@CMAKE_C_FLAGS@ @CMAKE_C_FLAGS_RELEASE@'])
+
+    s.append(['C++ compiler', r'@CMAKE_CXX_COMPILER@'])
+    s.append(['C++ compiler version', r'@CMAKE_CXX_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@'])
+    if '@CMAKE_BUILD_TYPE@'.lower() == 'debug':
+        s.append(['C++ flags', r'@CMAKE_CXX_FLAGS@ @CMAKE_CXX_FLAGS_DEBUG@'])
+    elif '@CMAKE_BUILD_TYPE@'.lower() == 'release':
+        s.append(['C++ flags', r'@CMAKE_CXX_FLAGS@ @CMAKE_CXX_FLAGS_RELEASE@'])
+
+    s.append(['Configuration time', r'@_configuration_time@ UTC'])
+    s.append(['Who compiled', r'@_user_name@'])
+    s.append(['Host', r'@_host_name@'])
+    s.append(['Python version', r'@_python_version@'])
+    s.append(['Definitions', r'@_list_of_definitions@'])
+    s.append(['Libraries', r'@EXTERNAL_LIBS@'])
+
+    s.append(['Git branch', r'@GIT_BRANCH@'])
+    s.append(['Git commit hash', r'@GIT_COMMIT_HASH@'])
+    s.append(['Git commit author', r'@GIT_COMMIT_AUTHOR@'])
+    s.append(['Git commit date', r'@GIT_COMMIT_DATE@'])
+
+  # this file may not exist when this script is run ... bummer
+  # for line in subprocess.check_output(["grep", "ENABLE.*BOOL", "CMakeCache.txt"]).split('\n'):
+  #     x = line.split(':BOOL=')
+  #     if len(x) == 2:
+  #         s.append(x)
+
+    return s
+
+#-------------------------------------------------------------------------------
+
+def chunkify(l, n):
+    return [l[i:i+n] for i in range(0, len(l), n)]
+
+#-------------------------------------------------------------------------------
+
+def is_empty(s):
+    return (s.replace(' ', '') == '')
+
+#-------------------------------------------------------------------------------
+
+def print_fortran():
+    output = []
+    output.append('subroutine print_config_info(print_unit)')
+    output.append('integer, intent(in) :: print_unit')
+    for line in raw_list():
+        if not is_empty(line[1]):
+            chunk_l = chunkify(line[1], 50)
+            for i in range(len(chunk_l)):
+                if i == 0:
+                    s = line[0]
+                else:
+                    s = ' '
+                output.append("    write(print_unit, '(a)') ' %s | %s'" % (s.ljust(30), chunk_l[i]))
+
+    output.append('end subroutine')
+    return '\n'.join(output)
+
+#-------------------------------------------------------------------------------
+
+def print_cmake():
+    output = []
+    for line in raw_list():
+        if not is_empty(line[1]):
+            output.append('message(STATUS "%s | %s")' % (line[0].ljust(30), line[1]))
+    return '\n'.join(output)
+
+#-------------------------------------------------------------------------------
+
+def error_print_args():
+    sys.stderr.write('ERROR: possible arguments are: Fortran, CMake\n')
+    sys.exit(-1)
+
+#-------------------------------------------------------------------------------
+
+def main():
+
+    if len(sys.argv) == 2:
+        if sys.argv[1] == 'Fortran':
+            print(print_fortran())
+        elif sys.argv[1] == 'CMake':
+            print(print_cmake())
+        else:
+            error_print_args()
+    else:
+        error_print_args()
+
+#-------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    main()
